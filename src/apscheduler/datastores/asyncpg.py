@@ -125,10 +125,9 @@ class AsyncPgDataStore(BaseExternalDataStore):
                     await self._create_schema(conn)
                     version = await conn.fetchval("select schema_version from metadata")
                     if version is None:
-                        r = await conn.execute(
+                        await conn.execute(
                             "insert into metadata(schema_version) values (1)"
                         )
-                        print(f"{table_name}: {r}")
                     elif version > 1:
                         raise RuntimeError(
                             f"Unexpected schema version ({version}); "
