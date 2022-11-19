@@ -110,8 +110,6 @@ class AsyncPgDataStore(BaseExternalDataStore):
             raise RuntimeError(
                 f"This data store requires asyncio; currently running: {asynclib}"
             )
-
-        # create the pool here, is that ok ?
         self.pool = await self.pool_factory()
         # Verify that the schema is in place
         async for attempt in self._retry():

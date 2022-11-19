@@ -224,7 +224,8 @@ async def asyncpg_store() -> DataStore:
         )
         yield datastore
     finally:
-        await datastore.pool.close()
+        if hasattr(datastore, "pool"):
+            await datastore.pool.close()
 
 
 @pytest.fixture(
