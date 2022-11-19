@@ -5,7 +5,7 @@ from collections import defaultdict
 from contextlib import AsyncExitStack
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 from uuid import UUID
 
 import anyio
@@ -62,17 +62,21 @@ class AsyncPgDataStore(BaseExternalDataStore):
 
     @classmethod
     async def from_dsn(
-        cls, dsn: str, schema: str, start_from_scratch: bool, **pool_options
+        cls,
+        dsn: str,
+        schema: str,
+        start_from_scratch: bool,
+        pool_options: Mapping[str, Any] | None = None,
     ) -> Self:
+        pool = await create_pool(
+            dsn=dsn, server_settings={"search_path": schema}.update(pool_options)
+        )
         self = AsyncPgDataStore(
             dsn=dsn,
             schema=schema,
             start_from_scratch=start_from_scratch,
-            **pool_options,
         )
-        self.pool = await create_pool(
-            dsn=dsn, server_settings={"search_path": schema}, **pool_options
-        )
+        self.pool = pool
         return self
 
     def _retry(self) -> tenacity.AsyncRetrying:
