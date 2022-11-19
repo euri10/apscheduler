@@ -4,15 +4,17 @@ import sys
 from collections import defaultdict
 from contextlib import AsyncExitStack
 from datetime import datetime, timedelta, timezone
+from functools import partial
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Awaitable, Callable, Iterable, Mapping
 from uuid import UUID
 
 import anyio
+import asyncpg
 import attrs
 import sniffio
 import tenacity as tenacity
-from asyncpg import Connection, Pool, create_pool
+from asyncpg import Connection, Pool
 from asyncpg.protocol.protocol import Record
 
 from .. import (
@@ -52,8 +54,7 @@ class MyRecord(Record):
 
 @attrs.define(eq=False)
 class AsyncPgDataStore(BaseExternalDataStore):
-    dsn: str
-    pool: Pool | None = attrs.field(default=None)
+    pool_factory: Callable[[], Awaitable[Pool]]
     schema: str | None = attrs.field(default=None)
     _tables: list[str] = attrs.field(
         default=["metadata", "tasks", "schedules", "jobs", "job_results"]
@@ -61,23 +62,19 @@ class AsyncPgDataStore(BaseExternalDataStore):
     _dbtypes: list[str] = ["coalescepolicy", "joboutcome"]
 
     @classmethod
-    async def from_dsn(
+    def from_dsn(
         cls,
         dsn: str,
         schema: str,
-        start_from_scratch: bool,
-        pool_options: Mapping[str, Any] | None = None,
+        options: Mapping[str, Any] | None = None,
+        **kwargs: Any,
     ) -> Self:
-        server_settings = {"search_path": schema}
-        server_settings.update(pool_options)
-        pool = await create_pool(dsn=dsn, server_settings=server_settings)
-        self = AsyncPgDataStore(
-            dsn=dsn,
-            schema=schema,
-            start_from_scratch=start_from_scratch,
-        )
-        self.pool = pool
-        return self
+        if schema:
+            if options:
+                if "server_settings" in options.keys():
+                    options["server_settings"].update({"search_path": schema})
+        factory = partial(asyncpg.create_pool, dsn, **(options or {}))
+        return cls(factory, schema, **kwargs)
 
     def _retry(self) -> tenacity.AsyncRetrying:
         def after_attempt(self, retry_state: tenacity.RetryCallState) -> None:
@@ -114,6 +111,8 @@ class AsyncPgDataStore(BaseExternalDataStore):
                 f"This data store requires asyncio; currently running: {asynclib}"
             )
 
+        # create the pool here, is that ok ?
+        self.pool = await self.pool_factory()
         # Verify that the schema is in place
         async for attempt in self._retry():
             with attempt:

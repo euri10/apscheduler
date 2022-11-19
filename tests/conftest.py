@@ -216,11 +216,11 @@ async def asyncpg_store() -> DataStore:
 
     dsn = "postgres://postgres:secret@localhost/testdb"
     try:
-        datastore = await AsyncPgDataStore.from_dsn(
+        datastore = AsyncPgDataStore.from_dsn(
             dsn,
             schema="asyncpg",
             start_from_scratch=True,
-            pool_options={"application_name": "datastore_pool"},
+            options={"server_settings": {"application_name": "datastore_pool"}},
         )
         yield datastore
     finally:
