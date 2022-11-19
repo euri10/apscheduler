@@ -68,9 +68,9 @@ class AsyncPgDataStore(BaseExternalDataStore):
         start_from_scratch: bool,
         pool_options: Mapping[str, Any] | None = None,
     ) -> Self:
-        pool = await create_pool(
-            dsn=dsn, server_settings={"search_path": schema}.update(pool_options)
-        )
+        server_settings = {"search_path": schema}
+        server_settings.update(pool_options)
+        pool = await create_pool(dsn=dsn, server_settings=server_settings)
         self = AsyncPgDataStore(
             dsn=dsn,
             schema=schema,
