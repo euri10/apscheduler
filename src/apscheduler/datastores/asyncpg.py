@@ -329,7 +329,6 @@ class AsyncPgDataStore(BaseExternalDataStore):
     async def release_schedules(
         self, scheduler_id: str, schedules: list[Schedule]
     ) -> None:
-        pass
         async for attempt in self._retry():
             with attempt:
                 async with self.pool.acquire() as conn:
@@ -452,7 +451,16 @@ class AsyncPgDataStore(BaseExternalDataStore):
         await self._event_broker.publish(event)
 
     async def get_jobs(self, ids: Iterable[UUID] | None = None) -> list[Job]:
-        pass
+        async for attempt in self._retry():
+            with attempt:
+                async with self.pool.acquire() as conn:
+                    if ids:
+                        query = """select * from jobs where id=any($1)"""
+                        result = await conn.fetch(query, ids, record_class=MyRecord)
+                    else:
+                        query = """select * from jobs order by id"""
+                        result = await conn.fetch(query, record_class=MyRecord)
+                    return await self._deserialize_jobs(result)
 
     async def acquire_jobs(self, worker_id: str, limit: int | None = None) -> list[Job]:
         async for attempt in self._retry():
