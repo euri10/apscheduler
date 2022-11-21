@@ -118,8 +118,8 @@ class AsyncPgDataStore(BaseExternalDataStore):
                     if self.start_from_scratch:
                         for table_name in self._tables:
                             await conn.execute(f"drop table if exists {table_name}")
-                        for dbtype in self._dbtypes:
-                            await conn.execute(f"drop type if exists {dbtype}")
+                    for dbtype in self._dbtypes:
+                        await conn.execute(f"drop type if exists {dbtype}")
                     await self._create_schema(conn)
                     version = await conn.fetchval("select schema_version from metadata")
                     if version is None:
