@@ -1,9 +1,11 @@
+DROP TYPE IF EXISTS coalescepolicy;
 CREATE TYPE coalescepolicy AS ENUM (
     'earliest',
     'latest',
     'all'
 );
 
+DROP TYPE IF EXISTS joboutcome;
 CREATE TYPE joboutcome AS ENUM (
     'success',
     'error',
