@@ -26,6 +26,7 @@ from apscheduler import (
     TaskUpdated,
 )
 from apscheduler.abc import DataStore, EventBroker
+from apscheduler.datastores.asyncpg import AsyncPgDataStore
 from apscheduler.triggers.date import DateTrigger
 
 pytestmark = pytest.mark.anyio
@@ -504,4 +505,27 @@ async def test_cancel_stop(raw_datastore: DataStore, local_broker: EventBroker) 
     with CancelScope() as scope:
         async with AsyncExitStack() as exit_stack:
             await raw_datastore.start(exit_stack, local_broker)
+            scope.cancel()
+
+
+async def test_twice_schema(local_broker: EventBroker) -> None:
+    dsn = "postgres://postgres:secret@localhost/testdb"
+    datastore = AsyncPgDataStore.from_dsn(
+        dsn,
+        schema="asyncpg",
+        start_from_scratch=True,
+        options={"server_settings": {"application_name": "datastore_pool"}},
+    )
+    with CancelScope() as scope:
+        async with AsyncExitStack() as exit_stack:
+            await datastore.start(exit_stack, local_broker)
+            scope.cancel()
+    datastore = AsyncPgDataStore.from_dsn(
+        dsn,
+        schema="asyncpg",
+        options={"server_settings": {"application_name": "datastore_pool"}},
+    )
+    with CancelScope() as scope:
+        async with AsyncExitStack() as exit_stack:
+            await datastore.start(exit_stack, local_broker)
             scope.cancel()
